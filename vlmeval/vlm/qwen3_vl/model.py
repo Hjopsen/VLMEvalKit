@@ -64,6 +64,7 @@ class Qwen3VLChat(Qwen3VLPromptMixin, BaseModel):
         post_process: bool = False,
         verbose: bool = False,
         use_audio_in_video: bool = True,
+        only_save_response: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(use_custom_prompt=use_custom_prompt)
@@ -92,6 +93,7 @@ class Qwen3VLChat(Qwen3VLPromptMixin, BaseModel):
         self.nframe = kwargs.pop('nframe', 128)
         self.FRAME_FACTOR = 2
         self.use_audio_in_video = use_audio_in_video
+        self.only_save_response = only_save_response
 
         assert model_path is not None
         self.model_path = model_path
@@ -423,8 +425,16 @@ class Qwen3VLChat(Qwen3VLPromptMixin, BaseModel):
             print(f'\033[32m{generated_text}\033[0m')
         return generated_text
 
+    def get_response(self, generated_text):
+        return generated_text.split("</think>")[-1]
+
     def generate_inner(self, message, dataset=None):
         if self.use_vllm:
-            return self.generate_inner_vllm(message, dataset=dataset)
+            response = self.generate_inner_vllm(message, dataset=dataset)
         else:
-            return self.generate_inner_transformers(message, dataset=dataset)
+            response = self.generate_inner_transformers(message, dataset=dataset)
+        
+        if self.only_save_response:
+            return self.get_response(response)
+        else:
+            return response
